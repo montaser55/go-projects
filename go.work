@@ -1,0 +1,9 @@
+go 1.19
+
+use (
+	./data-access
+	./generics
+	./go-movies-crud
+	./go-orm
+	./web-server
+)
