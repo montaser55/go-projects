@@ -6,4 +6,5 @@ use (
 	./go-movies-crud
 	./go-orm
 	./web-server
+	./two-factor-authentication-system
 )
