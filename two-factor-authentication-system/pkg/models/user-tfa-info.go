@@ -11,7 +11,7 @@ import (
 var db *gorm.DB
 
 type UserTfaInfo struct {
-	Id         int64     `gorm:"primaryKey;not null" sql:"nextval(user_tfa_info_seq)" json:"id"`
+	Id         int64     `gorm:"primaryKey;not null" json:"id"`
 	UserId     int64     `gorm:"not null;unique" json:"userId"`
 	Sms        bool      `json:"sms"`
 	App        bool      `json:"app"`

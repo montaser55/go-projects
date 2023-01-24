@@ -2,10 +2,12 @@ package controllers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
-	"github.com/montaser55/go-orm/pkg/utils"
 	"github.com/montaser55/two-factor-authentication-service/pkg/models"
+	"github.com/montaser55/two-factor-authentication-service/pkg/models/requests"
+	"github.com/montaser55/two-factor-authentication-service/pkg/utils"
 )
 
 const headerName = "Content-Type"
@@ -17,6 +19,18 @@ func CheckTfa(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(headerName, headerValue)
 	w.WriteHeader(http.StatusOK)
 	w.Write(res)
+}
+
+func GenerateSecret(w http.ResponseWriter, r *http.Request) {
+	request := &requests.GenerateSecretRequest{}
+	utils.ParseBody(r, request)
+	log.Printf("%v", request)
+	validateGenerateSecretRequest(*request)
+
+}
+
+func validateGenerateSecretRequest(request requests.GenerateSecretRequest) {
+	log.Printf("%v", request.UserId)
 }
 
 func PostTfa(w http.ResponseWriter, r *http.Request) {

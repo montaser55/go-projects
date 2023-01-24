@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 func ParseBody(r *http.Request, x any) {
@@ -12,4 +14,8 @@ func ParseBody(r *http.Request, x any) {
 			return
 		}
 	}
+}
+
+func GenerateReferenceId() string {
+	return uuid.NewV4().String()
 }
