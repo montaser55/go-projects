@@ -38,10 +38,26 @@ func GetAllUserTfaInfos() []UserTfaInfo {
 	return UserTfaInfos
 }
 
-func (userTfaInfo *UserTfaInfo) CreateUserTfaInfo() *UserTfaInfo {
-	err := db.Create(&userTfaInfo).Error
+func CreateUserTfaInfo(userTfaInfo *UserTfaInfo) *UserTfaInfo {
+	err := db.Create(userTfaInfo).Error
 	if err != nil {
 		log.Panic("UserTfaInfo not added")
 	}
+	return userTfaInfo
+}
+
+func GetUserTfaInfoByUserId(userId int64) *UserTfaInfo {
+	var userTfaInfo UserTfaInfo
+	db := db.Where("user_id=?", userId).First(&userTfaInfo)
+
+	if db.Error != nil {
+		log.Printf("%v", db.Error)
+		return nil
+	}
+	return &userTfaInfo
+}
+
+func UpdateUserTfaInfo(userTfaInfo *UserTfaInfo) *UserTfaInfo {
+	db.Save(userTfaInfo)
 	return userTfaInfo
 }

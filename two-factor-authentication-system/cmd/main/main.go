@@ -12,6 +12,6 @@ func main() {
 
 	r := mux.NewRouter()
 	routes.RegisterRoutes(r)
-	log.Fatal(http.ListenAndServe("localhost:13320", r))
+	log.Fatal(http.ListenAndServe("localhost:10340", r))
 
 }
