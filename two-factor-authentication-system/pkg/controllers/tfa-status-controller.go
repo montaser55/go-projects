@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/montaser55/two-factor-authentication-service/pkg/config"
 	"github.com/montaser55/two-factor-authentication-service/pkg/models"
 	"github.com/montaser55/two-factor-authentication-service/pkg/models/contexts"
@@ -245,14 +244,14 @@ func InitDisableTfa(w http.ResponseWriter, r *http.Request) {
 		secretKey = userTfaInfo.SecretKey
 	}
 
-	referenceId := uuid.New().String()
+	referenceId := utils.GenerateReferenceId()
 
 	redisClient := config.GetRedisClient()
 	twoFactorAuthenticationContext := buildTwoFactorAuthenticationContext(request.UserId, secretKey, request.TfaChannelType)
 	twoFactorAuthenticationContextJson, _ := json.Marshal(&twoFactorAuthenticationContext)
 	redisClient.Set(config.GetContext(), referenceId, twoFactorAuthenticationContextJson, 0)
 
-	tfaDisableInitResponse := buildTfaDisableInitResponse(referenceId, uint(interval))
+	tfaDisableInitResponse := buildTfaDisableInitResponse(referenceId, interval)
 	res, _ := json.Marshal(&tfaDisableInitResponse)
 	w.Header().Set(headerName, headerValue)
 	w.WriteHeader(http.StatusOK)
