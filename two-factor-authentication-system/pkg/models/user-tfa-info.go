@@ -39,6 +39,8 @@ func GetAllUserTfaInfos() []UserTfaInfo {
 }
 
 func CreateUserTfaInfo(userTfaInfo *UserTfaInfo) *UserTfaInfo {
+	userTfaInfo.Created = time.Now().UTC()
+	userTfaInfo.Version = 0
 	err := db.Create(userTfaInfo).Error
 	if err != nil {
 		log.Panic("UserTfaInfo not added")
@@ -58,6 +60,8 @@ func GetUserTfaInfoByUserId(userId int64) *UserTfaInfo {
 }
 
 func UpdateUserTfaInfo(userTfaInfo *UserTfaInfo) *UserTfaInfo {
+	userTfaInfo.Updated = time.Now().UTC()
+	userTfaInfo.Version = userTfaInfo.Version + 1
 	db.Save(userTfaInfo)
 	return userTfaInfo
 }
