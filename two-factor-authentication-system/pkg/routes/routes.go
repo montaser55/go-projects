@@ -9,7 +9,6 @@ var RegisterRoutes = func(router *mux.Router) {
 	contextPath := "/two-factor-authentication-service"
 	tfaStatus := "/api/tfa-status"
 	router.HandleFunc(contextPath+tfaStatus+"/check/{userId}", controllers.CheckTfa).Methods("GET")
-	router.HandleFunc(contextPath+tfaStatus+"/post", controllers.PostTfa).Methods("POST")
 	router.HandleFunc(contextPath+tfaStatus+"/generate-secret", controllers.GenerateSecret).Methods("POST")
 	router.HandleFunc(contextPath+tfaStatus+"/enable", controllers.EnableTfa).Methods("POST")
 	router.HandleFunc(contextPath+tfaStatus+"/init-disable", controllers.InitDisableTfa).Methods("POST")

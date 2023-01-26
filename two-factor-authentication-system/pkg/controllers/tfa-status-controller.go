@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"encoding/json"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/montaser55/two-factor-authentication-service/pkg/config"
@@ -22,8 +24,20 @@ const headerName = "Content-Type"
 const headerValue = "pkglication/json"
 
 func CheckTfa(w http.ResponseWriter, r *http.Request) {
-	userTfaInfos := models.GetAllUserTfaInfos()
-	res, _ := json.Marshal(userTfaInfos)
+	userId, _ := strconv.ParseInt(mux.Vars(r)["userId"], 10, 64)
+	userTfaInfo := models.GetUserTfaInfoByUserId(userId)
+	tfaStatusResponse := &responses.TfaStatusResponse{}
+	if userTfaInfo != nil {
+		if userTfaInfo.Sms {
+			tfaStatusResponse.IsEnabled = true
+			tfaStatusResponse.TfaChannelType = enums.SMS
+		} else if userTfaInfo.App {
+			tfaStatusResponse.IsEnabled = true
+			tfaStatusResponse.TfaChannelType = enums.APP
+		}
+	}
+
+	res, _ := json.Marshal(tfaStatusResponse)
 	w.Header().Set(headerName, headerValue)
 	w.WriteHeader(http.StatusOK)
 	w.Write(res)
@@ -205,15 +219,15 @@ func validateGenerateSecretRequest(request requests.GenerateSecretRequest) {
 	}
 }
 
-func PostTfa(w http.ResponseWriter, r *http.Request) {
-	userTfaInfo := &models.UserTfaInfo{}
-	utils.ParseBody(r, userTfaInfo)
-	models.CreateUserTfaInfo(userTfaInfo)
-	res, _ := json.Marshal(userTfaInfo)
-	w.Header().Set(headerName, headerValue)
-	w.WriteHeader(http.StatusOK)
-	w.Write(res)
-}
+//func PostTfa(w http.ResponseWriter, r *http.Request) {
+//	userTfaInfo := &models.UserTfaInfo{}
+//	utils.ParseBody(r, userTfaInfo)
+//	models.CreateUserTfaInfo(userTfaInfo)
+//	res, _ := json.Marshal(userTfaInfo)
+//	w.Header().Set(headerName, headerValue)
+//	w.WriteHeader(http.StatusOK)
+//	w.Write(res)
+//}
 
 func InitDisableTfa(w http.ResponseWriter, r *http.Request) {
 	request := &requests.TfaDisableInitRequest{}
