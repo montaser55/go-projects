@@ -12,7 +12,7 @@ var RegisterRoutes = func(router *mux.Router) {
 	router.HandleFunc(contextPath+tfaStatus+"/post", controllers.PostTfa).Methods("POST")
 	router.HandleFunc(contextPath+tfaStatus+"/generate-secret", controllers.GenerateSecret).Methods("POST")
 	router.HandleFunc(contextPath+tfaStatus+"/enable", controllers.EnableTfa).Methods("POST")
-	router.HandleFunc(contextPath+tfaStatus+"/init-disable", controllers.CheckTfa).Methods("POST")
-	router.HandleFunc(contextPath+tfaStatus+"/disable", controllers.CheckTfa).Methods("POST")
+	router.HandleFunc(contextPath+tfaStatus+"/init-disable", controllers.InitDisableTfa).Methods("POST")
+	router.HandleFunc(contextPath+tfaStatus+"/disable", controllers.DisableTfa).Methods("POST")
 
 }

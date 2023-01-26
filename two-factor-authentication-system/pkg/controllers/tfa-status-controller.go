@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/montaser55/two-factor-authentication-service/pkg/config"
 	"github.com/montaser55/two-factor-authentication-service/pkg/models"
 	"github.com/montaser55/two-factor-authentication-service/pkg/models/contexts"
@@ -125,6 +126,38 @@ func validateTfaEnableRequest(request requests.TfaEnableRequest) {
 	}
 }
 
+func validateTfaDisableInitRequest(request requests.TfaDisableInitRequest, userTfaInfo *models.UserTfaInfo) {
+	if userTfaInfo == nil {
+		log.Panic("TFA is already disabled")
+	}
+	if (userTfaInfo.Sms && request.TfaChannelType != enums.SMS) || (userTfaInfo.App && request.TfaChannelType != enums.APP) {
+		log.Panic("Invalid request")
+	}
+}
+
+func validateTfaDisableRequest(request requests.TfaDisableRequest, userTfaInfo *models.UserTfaInfo) {
+	tfaChannelType := request.TfaChannelType
+
+	if tfaChannelType == enums.SMS && request.ReferenceId == "" {
+		log.Panic("Reference ID not provided")
+	}
+
+	if userTfaInfo == nil || (!userTfaInfo.Sms && !userTfaInfo.App) {
+		log.Panic("TFA is already disabled")
+	}
+
+	switch tfaChannelType {
+	case enums.APP:
+		if !userTfaInfo.App {
+			log.Panic("TFA is already disabled")
+		}
+	case enums.SMS:
+		if !userTfaInfo.Sms {
+			log.Panic("TFA is already disabled")
+		}
+	}
+}
+
 func buildTwoFactorAuthenticationContext(userId int64, secret string, tfaChannelType enums.TfaChannelType) contexts.TwoFactorAuthenticationContext {
 	twoFactorAuthenticationContext := contexts.TwoFactorAuthenticationContext{}
 	twoFactorAuthenticationContext.UserId = userId
@@ -141,6 +174,13 @@ func buildGenerateSecretResponse(key otp.Key, referenceId string, request reques
 	res.ReferenceId = referenceId
 	res.TfaChannelType = request.TfaChannelType
 	res.ExpiryTimeInSeconds = getExpiryTimeInSeconds(request.TfaChannelType)
+	return res
+}
+
+func buildTfaDisableInitResponse(referenceId string, expiryTimeInSeconds int) responses.TfaDisableInitResponse {
+	res := responses.TfaDisableInitResponse{}
+	res.ReferenceId = referenceId
+	res.ExpiryTimeInSeconds = expiryTimeInSeconds
 	return res
 }
 
@@ -174,4 +214,87 @@ func PostTfa(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(headerName, headerValue)
 	w.WriteHeader(http.StatusOK)
 	w.Write(res)
+}
+
+func InitDisableTfa(w http.ResponseWriter, r *http.Request) {
+	request := &requests.TfaDisableInitRequest{}
+	utils.ParseBody(r, request)
+	userTfaInfo := models.GetUserTfaInfoByUserId(request.UserId)
+	validateTfaDisableInitRequest(*request, userTfaInfo)
+
+	tfaChannelType := request.TfaChannelType
+
+	key, _ := totp.Generate(totp.GenerateOpts{
+		Issuer: "cryptrade",
+		Period: uint(getExpiryTimeInSeconds(request.TfaChannelType)),
+	})
+
+	secretKey := ""
+	interval := getExpiryTimeInSeconds(tfaChannelType)
+	if userTfaInfo.Sms {
+		secretKey := key.Secret()
+		generatedOtp, _ := totp.GenerateCodeCustom(secretKey, time.Now().UTC(), totp.ValidateOpts{
+			Period:    uint(interval),
+			Skew:      1,
+			Digits:    otp.DigitsSix,
+			Algorithm: otp.AlgorithmSHA1,
+		})
+		log.Println("Generated OTP:", generatedOtp)
+		// todo: send SMS
+	} else if userTfaInfo.App {
+		secretKey = userTfaInfo.SecretKey
+	}
+
+	referenceId := uuid.New().String()
+
+	redisClient := config.GetRedisClient()
+	twoFactorAuthenticationContext := buildTwoFactorAuthenticationContext(request.UserId, secretKey, request.TfaChannelType)
+	twoFactorAuthenticationContextJson, _ := json.Marshal(&twoFactorAuthenticationContext)
+	redisClient.Set(config.GetContext(), referenceId, twoFactorAuthenticationContextJson, 0)
+
+	tfaDisableInitResponse := buildTfaDisableInitResponse(referenceId, uint(interval))
+	res, _ := json.Marshal(&tfaDisableInitResponse)
+	w.Header().Set(headerName, headerValue)
+	w.WriteHeader(http.StatusOK)
+	w.Write(res)
+}
+
+func DisableTfa(w http.ResponseWriter, r *http.Request) {
+	request := &requests.TfaDisableRequest{}
+	utils.ParseBody(r, request)
+	userTfaInfo := models.GetUserTfaInfoByUserId(request.UserId)
+	validateTfaDisableRequest(*request, userTfaInfo)
+
+	tfaChannelType := request.TfaChannelType
+
+	redisClient := config.GetRedisClient()
+	twoFactorAuthenticationContext := &contexts.TwoFactorAuthenticationContext{}
+	str, err := redisClient.Get(config.GetContext(), request.ReferenceId).Result()
+	if err != nil {
+		log.Panic("ReferenceId not found in redis")
+	}
+	json.Unmarshal([]byte(str), twoFactorAuthenticationContext)
+	if tfaChannelType == enums.SMS {
+		validateOtpExpiration(twoFactorAuthenticationContext.OtpGenerationTime, getExpiryTimeInSeconds(enums.SMS))
+	}
+	validate, _ := totp.ValidateCustom(request.Otp, twoFactorAuthenticationContext.SecretKey, time.Now().UTC(), totp.ValidateOpts{
+		Period:    uint(getExpiryTimeInSeconds(tfaChannelType)),
+		Skew:      1,
+		Digits:    otp.DigitsSix,
+		Algorithm: otp.AlgorithmSHA1,
+	})
+	log.Printf("%v", validate)
+	if !validate {
+		log.Panic("Invalid Otp")
+	}
+
+	switch tfaChannelType {
+	case enums.APP:
+		userTfaInfo.App = false
+	case enums.SMS:
+		userTfaInfo.Sms = false
+	default:
+		log.Panic("Invalid OTP channel")
+	}
+	models.UpdateUserTfaInfo(userTfaInfo)
 }
