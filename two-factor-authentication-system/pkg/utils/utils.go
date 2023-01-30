@@ -1,17 +1,26 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
-	"io/ioutil"
-
+	"io"
 	"net/http"
 
 	uuid "github.com/satori/go.uuid"
 )
 
 func ParseBody(r *http.Request, x any) {
-	if body, err := ioutil.ReadAll(r.Body); err == nil {
-		if err := json.Unmarshal([]byte(body), x); err != nil {
+	if body, err := io.ReadAll(r.Body); err == nil {
+		if err := json.Unmarshal(body, x); err != nil {
+			return
+		}
+	}
+}
+
+func ParseBodyReusable(r *http.Request, x any) {
+	if body, err := io.ReadAll(r.Body); err == nil {
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
+		if err := json.Unmarshal(body, x); err != nil {
 			return
 		}
 	}

@@ -1,14 +1,16 @@
 package gateways
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
 )
 
+var umsBaseUrl = "http://3.36.21.109:10210/user-management-service-1.0"
+
 func GetUserEmailInfo(userId int64) string {
-	req, err := http.NewRequest("GET", "http://3.36.21.109:10210/user-management-service-1.0/api/users/email", nil)
+	req, err := http.NewRequest("GET", umsBaseUrl+"/api/users/email", nil)
 	if err != nil {
 		log.Print(err)
 	}
@@ -20,7 +22,7 @@ func GetUserEmailInfo(userId int64) string {
 	if err != nil {
 		log.Panic("user email could not get from ums")
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Panic(err)
 	}
