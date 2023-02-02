@@ -53,10 +53,16 @@ func GenerateSecret(w http.ResponseWriter, r *http.Request) {
 	key, _ := totp.Generate(totp.GenerateOpts{
 		Issuer:      "cryptrade",
 		AccountName: email,
-		Period:      uint(getExpiryTimeInSeconds(request.TfaChannelType)),
+		Period:      uint(utils.GetExpiryTimeInSeconds(request.TfaChannelType)),
+	})
+	otp, _ := totp.GenerateCodeCustom(key.Secret(), time.Now().UTC(), totp.ValidateOpts{
+		Period:    uint(utils.GetExpiryTimeInSeconds(request.TfaChannelType)),
+		Skew:      1,
+		Digits:    otp.DigitsSix,
+		Algorithm: otp.AlgorithmSHA1,
 	})
 	//config.RedisConnect()
-	log.Printf("%v", config.GetRedisClient().Ping(config.GetContext()))
+	log.Printf(otp)
 	redisClient := config.GetRedisClient()
 	twoFactorAuthenticationContext := buildTwoFactorAuthenticationContext(request.UserId, key.Secret(), request.TfaChannelType)
 	twoFactorAuthenticationContextJson, _ := json.Marshal(&twoFactorAuthenticationContext)
@@ -82,10 +88,10 @@ func EnableTfa(w http.ResponseWriter, r *http.Request) {
 	}
 	json.Unmarshal([]byte(str), twoFactorAuthenticationContext)
 	if request.TfaChannelType == enums.SMS {
-		validateOtpExpiration(twoFactorAuthenticationContext.OtpGenerationTime, getExpiryTimeInSeconds(enums.SMS))
+		validateOtpExpiration(twoFactorAuthenticationContext.OtpGenerationTime, utils.GetExpiryTimeInSeconds(enums.SMS))
 	}
 	validate, _ := totp.ValidateCustom(request.Otp, twoFactorAuthenticationContext.SecretKey, time.Now().UTC(), totp.ValidateOpts{
-		Period:    uint(getExpiryTimeInSeconds(request.TfaChannelType)),
+		Period:    uint(utils.GetExpiryTimeInSeconds(request.TfaChannelType)),
 		Skew:      1,
 		Digits:    otp.DigitsSix,
 		Algorithm: otp.AlgorithmSHA1,
@@ -186,7 +192,7 @@ func buildGenerateSecretResponse(key otp.Key, referenceId string, request reques
 	res.QrCodeMessage = key.String()
 	res.ReferenceId = referenceId
 	res.TfaChannelType = request.TfaChannelType
-	res.ExpiryTimeInSeconds = getExpiryTimeInSeconds(request.TfaChannelType)
+	res.ExpiryTimeInSeconds = utils.GetExpiryTimeInSeconds(request.TfaChannelType)
 	return res
 }
 
@@ -195,15 +201,6 @@ func buildTfaDisableInitResponse(referenceId string, expiryTimeInSeconds int) re
 	res.ReferenceId = referenceId
 	res.ExpiryTimeInSeconds = expiryTimeInSeconds
 	return res
-}
-
-func getExpiryTimeInSeconds(tfaChannelType enums.TfaChannelType) int {
-	if tfaChannelType == enums.SMS {
-		return 180
-	} else if tfaChannelType == enums.APP {
-		return 30
-	}
-	return 0
 }
 
 func validateGenerateSecretRequest(request requests.GenerateSecretRequest) {
@@ -238,12 +235,11 @@ func InitDisableTfa(w http.ResponseWriter, r *http.Request) {
 	tfaChannelType := request.TfaChannelType
 
 	key, _ := totp.Generate(totp.GenerateOpts{
-		Issuer: "cryptrade",
-		Period: uint(getExpiryTimeInSeconds(request.TfaChannelType)),
+		Period: uint(utils.GetExpiryTimeInSeconds(request.TfaChannelType)),
 	})
 
 	secretKey := ""
-	interval := getExpiryTimeInSeconds(tfaChannelType)
+	interval := utils.GetExpiryTimeInSeconds(tfaChannelType)
 	if userTfaInfo.Sms {
 		secretKey := key.Secret()
 		generatedOtp, _ := totp.GenerateCodeCustom(secretKey, time.Now().UTC(), totp.ValidateOpts{
@@ -288,10 +284,10 @@ func DisableTfa(w http.ResponseWriter, r *http.Request) {
 	}
 	json.Unmarshal([]byte(str), twoFactorAuthenticationContext)
 	if tfaChannelType == enums.SMS {
-		validateOtpExpiration(twoFactorAuthenticationContext.OtpGenerationTime, getExpiryTimeInSeconds(enums.SMS))
+		validateOtpExpiration(twoFactorAuthenticationContext.OtpGenerationTime, utils.GetExpiryTimeInSeconds(enums.SMS))
 	}
 	validate, _ := totp.ValidateCustom(request.Otp, twoFactorAuthenticationContext.SecretKey, time.Now().UTC(), totp.ValidateOpts{
-		Period:    uint(getExpiryTimeInSeconds(tfaChannelType)),
+		Period:    uint(utils.GetExpiryTimeInSeconds(tfaChannelType)),
 		Skew:      1,
 		Digits:    otp.DigitsSix,
 		Algorithm: otp.AlgorithmSHA1,

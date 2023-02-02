@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/montaser55/two-factor-authentication-service/pkg/utils/enums"
 	"io"
 	"net/http"
 
@@ -28,4 +29,13 @@ func ParseBodyReusable(r *http.Request, x any) {
 
 func GenerateReferenceId() string {
 	return uuid.NewV4().String()
+}
+
+func GetExpiryTimeInSeconds(tfaChannelType enums.TfaChannelType) int {
+	if tfaChannelType == enums.SMS {
+		return 180
+	} else if tfaChannelType == enums.APP {
+		return 30
+	}
+	return 0
 }
